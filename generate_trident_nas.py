@@ -571,6 +571,7 @@ def main(config_file: str = None) -> None:
     config = load_config(config_file)
     generate_trident_files(config)
     
+    print(f"\n Para personalizar:")
     print(f"  1. Edita {config_file}")
     print(f"  2. Ejecuta: python generate_trident_nas.py")
 
