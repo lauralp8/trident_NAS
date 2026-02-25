@@ -1,0 +1,75 @@
+# ================================================================================
+# CONFIGURACIÓN TRIDENT NAS - Solo edita los valores necesarios
+# ================================================================================
+# 
+# INSTRUCCIONES:
+#   1. Edita solo los valores a la DERECHA de los dos puntos (:)
+#   2. NO borres las líneas, solo cambia los valores
+#   3. Los campos con # delante son opcionales (puedes ignorarlos)
+#   4. Para usar un campo opcional, quita el # del inicio de la línea
+#
+# ================================================================================
+
+# BACKEND - Configuración del almacenamiento NetApp
+backend:
+  # === CAMPOS OBLIGATORIOS ===
+  managementLIF: 192.168.204.203
+  dataLIF: 192.168.205.203
+  svm: SVM
+  
+  # === CAMPOS OPCIONALES ===
+  # name: backend-jc-nas1200
+  # storagePrefix: trident
+  # credentialsName: trident-creds
+  # autoExportPolicy: false
+  # autoExportCIDRs:
+  #   - 0.0.0.0/0
+  #   - ::/0
+  # labels: ""
+  # clientCertificate: ""
+  # clientPrivateKey: ""
+  # trustedCACertificate: ""
+  # limitAggregateUsage: ""
+  # limitVolumeSize: ""
+  # nfsMountOptions: ""
+  # qtreesPerFlexvol: "200"
+  
+  # === DEBUG FLAGS ===
+  # debugTraceFlags:
+  #   api: false
+  #   method: false
+  
+  # === DEFAULTS DE VOLÚMENES ===
+  # defaults:
+  #   spaceReserve: none
+  #   spaceAllocation: "false"
+  #   snapshotPolicy: none
+  #   snapshotReserve: "0"
+  #   unixPermissions: "755"
+  #   snapshotDir: "true"
+  #   exportPolicy: default
+  #   securityStyle: unix
+  #   encryption: "false"
+  #   qosPolicy: ""
+  #   adaptiveQosPolicy: ""
+  #   nameTemplate: ""
+  #   aggregate: ""
+  # credentials:
+  #   name: trident-creds
+
+# STORAGE CLASS - Nombre del storage class en Kubernetes/OpenShift
+storageClass:
+  # === CAMPOS OBLIGATORIOS ===
+  name: rhoso-nas
+  
+  # === CAMPOS OPCIONALES ===
+  # isDefault: true
+  # syncWave: "5"
+  
+  # === PARÁMETROS DEL STORAGE CLASS ===
+  # parameters:
+  #   backendType: ontap-nas
+  #   media: ssd
+  #   provisioningType: thin
+  #   snapshots: "true"
+
