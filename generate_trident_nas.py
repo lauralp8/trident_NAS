@@ -71,13 +71,13 @@ class BackendDefaults:
 @dataclass
 class DebugTraceFlags:
     """
-    Configuración de logs de depuración para Trident.
+    Indicadores de depuración para usar al solucionar problemas.
     
-    Útil para troubleshooting de problemas con el backend.
-    ADVERTENCIA: Activar puede generar muchos logs.
+    ADVERTENCIA: No usar debugTraceFlags a menos que esté solucionando problemas 
+    y necesite un registro detallado.
     
     Args:
-        api: Traza llamadas a la API de ONTAP
+        api: Traza llamadas a la API de ONTAP desde el pod de Trident
         method: Traza métodos internos de Trident
     """
     api: bool = False
@@ -89,18 +89,15 @@ class BackendConfig:
     """
     Configuración completa del TridentBackendConfig.
     
-    Define cómo Trident se conecta al storage de NetApp ONTAP NAS
-    y los parámetros por defecto para aprovisionar volúmenes.
+    Define cómo Trident se conecta al storage de NetApp ONTAP NAS.
     
     Campos obligatorios:
         - managementLIF: IP de gestión del SVM
         - dataLIF: IP de datos para conexiones NFS
         - svm: Storage Virtual Machine en ONTAP
-    
-    Auto-generados:
-        - backendName: Se genera como 'ontap-nas_<dataLIF>'
+
     """
-    name: str = 'backend-jc-nas1200'
+    name: str = 'backend-jc-nas1200' 
     managementLIF: str = ''  # Campo obligatorio - debe especificarse en config.yaml
     dataLIF: str = ''  # Campo obligatorio - debe especificarse en config.yaml
     svm: str = ''  # Campo obligatorio - debe especificarse en config.yaml
@@ -125,9 +122,6 @@ class StorageClassParameters:
     """
     Parámetros de selección de backend para el StorageClass.
     
-    Trident usa estos parámetros para seleccionar el backend correcto
-    cuando se aprovisiona un PersistentVolume.
-    
     Args:
         backendType: Tipo de driver de Trident (ontap-nas)
         media: Tipo de disco (ssd, hdd)
@@ -144,8 +138,6 @@ class StorageClassParameters:
 class StorageClassConfig:
     """
     Configuración del StorageClass de Kubernetes.
-    
-    Define cómo los usuarios solicitan almacenamiento a través de PVCs.
     
     Args:
         name: Nombre visible del StorageClass en K8s
@@ -164,20 +156,20 @@ class SecretConfig:
     """
     Credenciales de acceso al backend NetApp ONTAP.
     
-    Almacena las credenciales que Trident usa para autenticarse
-    contra el SVM de NetApp.
+    Almacena las credenciales que Trident usa para autenticarse.
     
-    IMPORTANTE: Usar autenticación basada en certificados es más seguro
-    que usuario/contraseña. Ver clientCertificate en BackendConfig.
+    Campos obligatorios:
+        - username: Usuario 
+        - password: Contraseña del usuario
     
     Args:
-        name: Nombre del Secret en Kubernetes
-        username: Usuario del SVM (ej: vsadmin)
-        password: Contraseña del usuario
+        name: Nombre del Secret en Kubernetes (default: trident-creds)
+        username: Usuario - OBLIGATORIO
+        password: Contraseña del usuario - OBLIGATORIO
     """
     name: str = 'trident-creds'
-    username: str = 'edgevsadmin'
-    password: str = 'Temporal01'
+    username: str = ''  # Campo obligatorio - debe especificarse en config.yaml
+    password: str = ''  # Campo obligatorio - debe especificarse en config.yaml
 
 
 @dataclass
@@ -206,8 +198,8 @@ def merge_dicts(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any
     """
     Fusiona dos diccionarios recursivamente de forma inteligente.
     
-    Los valores del diccionario 'override' tienen prioridad sobre 'base'.
-    Si ambos valores son diccionarios, se fusionan recursivamente.
+    Los valores del usuario (override) reemplazan los valores por defecto (base).
+    Cuando ambos contienen diccionarios anidados, se combinan recursivamente.
     
     Args:
         base: Diccionario con valores por defecto
@@ -216,11 +208,6 @@ def merge_dicts(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any
     Returns:
         Diccionario fusionado con valores de override prevaleciendo
     
-    Ejemplo:
-        >>> base = {'a': 1, 'b': {'c': 2, 'd': 3}}
-        >>> override = {'b': {'c': 99}}
-        >>> merge_dicts(base, override)
-        {'a': 1, 'b': {'c': 99, 'd': 3}}
     """
     result = base.copy()
     for key, value in override.items():
@@ -252,13 +239,6 @@ def load_config(config_file: str = "config.yaml") -> TridentConfig:
         ValueError: Si falta algún campo obligatorio
         FileNotFoundError: Si config_file no existe
     
-    Ejemplo de config.yaml mínimo:
-        backend:
-          managementLIF: 192.168.1.100
-          dataLIF: 192.168.1.101
-          svm: my-svm
-        storageClass:
-          name: my-sc
     """
     if not os.path.exists(config_file):
         return TridentConfig()
@@ -300,6 +280,8 @@ def load_config(config_file: str = "config.yaml") -> TridentConfig:
     
     # ===== VALIDACIONES DE CAMPOS OBLIGATORIOS =====
     
+    secret_config = SecretConfig(**secret_data)
+    
     errors = []
     if not backend_config.managementLIF:
         errors.append("  - backend.managementLIF")
@@ -307,6 +289,10 @@ def load_config(config_file: str = "config.yaml") -> TridentConfig:
         errors.append("  - backend.dataLIF")
     if not backend_config.svm:
         errors.append("  - backend.svm")
+    if not secret_config.username:
+        errors.append("  - secret.username")
+    if not secret_config.password:
+        errors.append("  - secret.password")
     
     if errors:
         raise ValueError(
@@ -317,7 +303,7 @@ def load_config(config_file: str = "config.yaml") -> TridentConfig:
     return TridentConfig(
         backend=backend_config,
         storageClass=StorageClassConfig(**storage_class_data),
-        secret=SecretConfig(**secret_data)
+        secret=secret_config
     )
 
 
@@ -328,20 +314,14 @@ def comment_empty_fields(filepath: str) -> None:
     Esta función mejora la legibilidad del YAML manteniendo visible la
     documentación de parámetros opcionales sin afectar el funcionamiento.
     
-    Comportamiento inteligente:
+    Comportamiento:
         - NO comenta campos contenedores (metadata, spec, defaults, etc.)
         - SÍ comenta líneas con valores explícitamente vacíos ('', "")
         - Preserva indentación original
     
     Args:
-        filepath: Ruta del archivo YAML a procesar (se modifica in-place)
+        filepath: Ruta del archivo YAML a procesar
     
-    Ejemplo:
-        Antes:  labels: ''
-        Después: # labels: ''
-        
-        Antes:  metadata:
-        Después: metadata:  (sin cambios)
     """
     # Campos que son contenedores y nunca deben ser comentados
     container_fields = {
@@ -405,9 +385,7 @@ def create_backend_yaml(config: BackendConfig, secret_name: str) -> Dict[str, An
     
     Returns:
         Dict representando TridentBackendConfig listo para serializar a YAML
-    
-    Ejemplo de backendName generado:
-        dataLIF: 192.168.205.203 → backendName: ontap-nas_192_168_205_203
+
     """
     backend = asdict(config)
     defaults = backend.pop('defaults')
@@ -441,21 +419,12 @@ def create_storage_class_yaml(config: StorageClassConfig) -> Dict[str, Any]:
     """
     Genera la estructura YAML del StorageClass de Kubernetes.
     
-    Crea un StorageClass configurado para:
-        - Usar Trident CSI como provisioner
-        - Soportar expansión de volúmenes (allowVolumeExpansion)
-        - Vinculación inmediata de volúmenes (Immediate)
-        - Política de reclamación Delete (borra volumen al eliminar PVC)
-    
     Args:
         config: Configuración del StorageClass validada
     
     Returns:
         Dict representando StorageClass listo para serializar a YAML
     
-    Annotations especiales:
-        - is-default-class: Marca como StorageClass por defecto del cluster
-        - sync-wave: Orden de aplicación en ArgoCD (GitOps)
     """
     return {
         'apiVersion': 'storage.k8s.io/v1',
@@ -481,12 +450,6 @@ def create_secret_yaml(config: SecretConfig) -> Dict[str, Any]:
     
     Crea un Secret Opaque de Kubernetes que almacena las credenciales
     que Trident usa para autenticarse contra el SVM de NetApp ONTAP.
-    
-    IMPORTANTE: Estas credenciales se almacenan en base64 en K8s.
-    Para producción, considera:
-        - Usar Sealed Secrets para GitOps
-        - Autenticación basada en certificados (más segura)
-        - External Secrets Operator con vault externo
     
     Args:
         config: Configuración del Secret validada
@@ -523,7 +486,7 @@ def generate_trident_files(
         2. Genera diccionario de StorageClass
         3. Genera diccionario de Secret
         4. Serializa backend + StorageClass a backend_storage.yaml
-        5. Comenta campos vacíos en backend_storage.yaml (documentación)
+        5. Comenta campos vacíos en backend_storage.yaml 
         6. Serializa Secret a secret.yaml
         7. Muestra confirmación
     
@@ -589,14 +552,6 @@ def main(config_file: str = None) -> None:
         - Confirmación de archivos generados
         - Instrucciones para personalizar
     
-    Ejemplo de uso:
-        >>> main()  # Usa config.yaml por defecto
-        📄 Usando configuración: config.yaml
-        ✓ Archivo generado: backend_storage.yaml
-        ✓ Archivo generado: secret.yaml
-        
-        ¡Archivos YAML generados exitosamente!
-    
     Raises:
         FileNotFoundError: Si config.yaml no existe
         ValueError: Si faltan campos obligatorios en config.yaml
@@ -611,12 +566,11 @@ def main(config_file: str = None) -> None:
             print("  - config.yaml")
             return
     
-    print(f"📄 Usando configuración: {config_file}")
+    print(f"Usando configuración: {config_file}")
     
     config = load_config(config_file)
     generate_trident_files(config)
     
-    print(f"\n💡 Para personalizar:")
     print(f"  1. Edita {config_file}")
     print(f"  2. Ejecuta: python generate_trident_nas.py")
 
