@@ -550,10 +550,8 @@ def generate_trident_files(
     
     # Comentar campos vacíos
     comment_empty_fields(backend_file)
-    print(f"✓ Archivo generado: {backend_file}")
-    print(f"ℹ Recuerda: Debes crear manualmente el Secret '{config.secret.name}' en el namespace trident")
+    print(f"Archivo generado: {backend_file}")
     
-    print("\nArchivo backend_storage.yaml correctamente generado para Trident NAS.")
 
 
 def main(config_file: str = None) -> None:
