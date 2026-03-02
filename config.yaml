@@ -34,6 +34,14 @@ backend:
   # nfsMountOptions: ""
   # qtreesPerFlexvol: "200"
   
+  # === CONFIGURACIÓN AVANZADA DEL BACKEND ===
+  # namespace: trident
+  # version: 1
+  # backendName: ""  # Si vacío, se auto-genera como ontap-nas_<dataLIF>
+  # storageDriverName: ontap-nas
+  # nasType: nfs
+  # useREST: true
+  
   # === DEBUG FLAGS ===
   # debugTraceFlags:
   #   api: false
@@ -65,6 +73,9 @@ storageClass:
   # === CAMPOS OPCIONALES ===
   # isDefault: true
   # syncWave: "5"
+  # reclaimPolicy: Delete
+  # allowVolumeExpansion: true
+  # volumeBindingMode: Immediate
   
   # === PARÁMETROS DEL STORAGE CLASS ===
   # parameters:
