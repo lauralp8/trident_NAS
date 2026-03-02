@@ -13,7 +13,11 @@ DESCRIPCIÓN:
 
 ARCHIVOS GENERADOS:
     - backend_storage.yaml: TridentBackendConfig + StorageClass de Kubernetes
-    - secret.yaml: Secret con credenciales de acceso a NetApp ONTAP
+    
+NOTA IMPORTANTE:
+    El archivo secret.yaml NO se genera automáticamente por seguridad.
+    Debes crearlo manualmente con tus credenciales reales y aplicarlo
+    al clúster antes del backend.
 
 USO:
     python generate_trident_nas.py
@@ -547,17 +551,9 @@ def generate_trident_files(
     # Comentar campos vacíos
     comment_empty_fields(backend_file)
     print(f"✓ Archivo generado: {backend_file}")
+    print(f"ℹ Recuerda: Debes crear manualmente el Secret '{config.secret.name}' en el namespace trident")
     
-    # Solo generar secret.yaml si hay credenciales en el config
-    if config.secret.username and config.secret.password:
-        secret = create_secret_yaml(config.secret)
-        with open(secret_file, 'w', encoding='utf-8') as f:
-            yaml.dump(secret, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
-        print(f"✓ Archivo generado: {secret_file}")
-    else:
-        print(f"ℹ Secret NO generado (usando secret existente: {config.secret.name})")
-    
-    print("\nArchivo backend_storage.yaml correctamente generado para Trident SAN.")
+    print("\nArchivo backend_storage.yaml correctamente generado para Trident NAS.")
 
 
 def main(config_file: str = None) -> None:
@@ -603,13 +599,15 @@ def main(config_file: str = None) -> None:
     
     print(f"\n ------------------------------------------------------------------")
     print(f"\n Instrucciones:")
-    print(f"  1. Edita {config_file}")
-    print(f"  2. Ejecuta: python generate_trident_nas.py")
-    print(f"  3. Aplica los archivos generados en tu clúster:")
-    print(f"     - kubectl apply -f backend_storage.yaml -n trident")
+    print(f"  1. Edita {config_file} si necesitas ajustar la configuración")
+    print(f"  2. Crea manualmente el Secret con credenciales:")
+    print(f"     - Edita secret.yaml con tus credenciales reales")
     print(f"     - kubectl apply -f secret.yaml -n trident")
+    print(f"  3. Aplica el backend:")
+    print(f"     - kubectl apply -f backend_storage.yaml -n trident")
     print(f"  4. Verifica los recursos creados:")
     print(f"     - kubectl get tridentbackendconfig -n trident")
+    print(f"     - kubectl get storageclass")
     print(f"\n ------------------------------------------------------------------")
 
 
