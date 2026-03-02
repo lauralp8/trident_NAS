@@ -599,7 +599,7 @@ def main(config_file: str = None) -> None:
     print(f"\n Instrucciones:")
     print(f"  1. Edita config.yaml y secret.yaml")
     print(f"  2. Ejecuta: python generate_trident_nas.py")
-    print(f"  3. Aplica los archivos generados en tu clúster:")
+    print(f"  3. Aplica los archivos generados:")
     print(f"     - kubectl apply -f backend_storage.yaml -n trident")
     print(f"     - kubectl apply -f secret.yaml -n trident")
     print(f"  4. Verifica los recursos creados:")
