@@ -597,15 +597,13 @@ def main(config_file: str = None) -> None:
     
     print(f"\n ------------------------------------------------------------------")
     print(f"\n Instrucciones:")
-    print(f"  1. Edita {config_file} si necesitas ajustar la configuración")
-    print(f"  2. Crea manualmente el Secret con credenciales:")
-    print(f"     - Edita secret.yaml con tus credenciales reales")
-    print(f"     - kubectl apply -f secret.yaml -n trident")
-    print(f"  3. Aplica el backend:")
+    print(f"  1. Edita config.yaml y secret.yaml")
+    print(f"  2. Ejecuta: python generate_trident_nas.py")
+    print(f"  3. Aplica los archivos generados en tu clúster:")
     print(f"     - kubectl apply -f backend_storage.yaml -n trident")
+    print(f"     - kubectl apply -f secret.yaml -n trident")
     print(f"  4. Verifica los recursos creados:")
     print(f"     - kubectl get tridentbackendconfig -n trident")
-    print(f"     - kubectl get storageclass")
     print(f"\n ------------------------------------------------------------------")
 
 
