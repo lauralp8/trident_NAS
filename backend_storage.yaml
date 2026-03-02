@@ -5,14 +5,14 @@ metadata:
   namespace: trident
 spec:
   version: 1
-  backendName: ontap-nas_192_168_205_203
+  backendName: ontap-nas_nassvm_demo_netapp_com
   storageDriverName: ontap-nas
   nasType: nfs
   useREST: true
   name: backend-jc-nas1200
   managementLIF: 192.168.204.203
-  dataLIF: 192.168.205.203
-  svm: SVM
+  dataLIF: nassvm.demo.netapp.com
+  svm: nassvm
   storagePrefix: trident
   autoExportPolicy: false
   autoExportCIDRs:
