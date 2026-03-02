@@ -516,7 +516,6 @@ def generate_trident_files(
     # Generar recursos
     backend = create_backend_yaml(config.backend, config.secret.name)
     storage_class = create_storage_class_yaml(config.storageClass)
-    secret = create_secret_yaml(config.secret)
     
     # Escribir backend y storage class
     with open(backend_file, 'w', encoding='utf-8') as f:
@@ -528,11 +527,15 @@ def generate_trident_files(
     comment_empty_fields(backend_file)
     print(f"✓ Archivo generado: {backend_file}")
     
-    # Escribir secret
-    with open(secret_file, 'w', encoding='utf-8') as f:
-        yaml.dump(secret, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+    # Solo generar secret.yaml si hay credenciales en el config
+    if config.secret.username and config.secret.password:
+        secret = create_secret_yaml(config.secret)
+        with open(secret_file, 'w', encoding='utf-8') as f:
+            yaml.dump(secret, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+        print(f"✓ Archivo generado: {secret_file}")
+    else:
+        print(f"ℹ Secret NO generado (usando secret existente: {config.secret.name})")
     
-    print(f"✓ Archivo generado: {secret_file}")
     print("\n¡Archivos YAML generados exitosamente!")
 
 
