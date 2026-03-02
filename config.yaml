@@ -13,7 +13,7 @@
 # BACKEND - Configuración del almacenamiento NetApp
 backend:
   # === CAMPOS OBLIGATORIOS ===
-  managementLIF: 192.168.204.203
+  managementLIF: nassvm-mgmt.demo.netapp.com
   dataLIF: nassvm.demo.netapp.com
   svm: nassvm
   
@@ -73,4 +73,13 @@ storageClass:
   #   provisioningType: thin
   #   snapshots: "true"
 
+# SECRET - Credenciales de acceso al storage NetApp
+secret:
+  # === CAMPOS OBLIGATORIOS ===
+  username: vsadmin
+  password: Netapp1!
+  
+  # === CAMPOS OPCIONALES ===
+  # credentials:
+  # name: trident-creds
 
