@@ -258,19 +258,23 @@ def load_config(config_file: str = "config.yaml") -> TridentConfig:
     debug_trace_flags = DebugTraceFlags(**merged.get('backend', {}).get('debugTraceFlags', {}))
     
     # ===== COMPATIBILIDAD: Manejar credentials.name anidado =====
-    backend_config_dict = merged.get('backend', {})
+    backend_config_dict = merged.get('backend', {}).copy()
     credentials_name = 'trident-creds'  # valor por defecto
     if 'credentials' in backend_config_dict and isinstance(backend_config_dict['credentials'], dict):
         credentials_name = backend_config_dict['credentials'].get('name', 'trident-creds')
     
-    # Construir backend_data excluyendo el campo 'credentials' (ya procesado)
+    # Remover campos especiales antes de construir backend_data
+    backend_config_dict.pop('credentials', None)
+    backend_config_dict.pop('defaults', None)
+    backend_config_dict.pop('debugTraceFlags', None)
+    
+    # Construir backend_data con campos procesados
     backend_data = {
-        **merged.get('backend', {}),
+        **backend_config_dict,
         'defaults': backend_defaults,
         'debugTraceFlags': debug_trace_flags,
         'credentialsName': credentials_name
     }
-    backend_data.pop('credentials', None)  # Remover si existe
     
     storage_class_params = StorageClassParameters(**merged.get('storageClass', {}).get('parameters', {}))
     storage_class_data = {**merged.get('storageClass', {}), 'parameters': storage_class_params}
