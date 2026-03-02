@@ -557,7 +557,7 @@ def generate_trident_files(
     else:
         print(f"ℹ Secret NO generado (usando secret existente: {config.secret.name})")
     
-    print("\n¡Archivo backend_storage.yaml generado exitosamente!")
+    print("\nArchivo backend_storage.yaml correctamente generado para Trident SAN.")
 
 
 def main(config_file: str = None) -> None:
