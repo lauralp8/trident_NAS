@@ -54,8 +54,8 @@ backend:
   #   adaptiveQosPolicy: ""
   #   nameTemplate: ""
   #   aggregate: ""
-  # credentials:
-  #   name: trident-creds
+  credentials:
+    name: trident-creds
 
 # STORAGE CLASS - Nombre del storage class en Kubernetes/OpenShift
 storageClass:
@@ -73,12 +73,4 @@ storageClass:
   #   provisioningType: thin
   #   snapshots: "true"
 
-# SECRET - Credenciales de acceso al SVM
-secret:
-  # === CAMPOS OBLIGATORIOS ===
-  username: edgevsadmin
-  password: Temporal01
-  
-  # === CAMPOS OPCIONALES ===
-  # name: trident-creds
 

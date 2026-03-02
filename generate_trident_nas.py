@@ -256,22 +256,26 @@ def load_config(config_file: str = "config.yaml") -> TridentConfig:
     # Reconstruir objetos anidados desde diccionario fusionado
     backend_defaults = BackendDefaults(**merged.get('backend', {}).get('defaults', {}))
     debug_trace_flags = DebugTraceFlags(**merged.get('backend', {}).get('debugTraceFlags', {}))
+    
+    # ===== COMPATIBILIDAD: Manejar credentials.name anidado =====
+    backend_config_dict = merged.get('backend', {})
+    credentials_name = 'trident-creds'  # valor por defecto
+    if 'credentials' in backend_config_dict and isinstance(backend_config_dict['credentials'], dict):
+        credentials_name = backend_config_dict['credentials'].get('name', 'trident-creds')
+    
+    # Construir backend_data excluyendo el campo 'credentials' (ya procesado)
     backend_data = {
         **merged.get('backend', {}),
         'defaults': backend_defaults,
-        'debugTraceFlags': debug_trace_flags
+        'debugTraceFlags': debug_trace_flags,
+        'credentialsName': credentials_name
     }
+    backend_data.pop('credentials', None)  # Remover si existe
     
     storage_class_params = StorageClassParameters(**merged.get('storageClass', {}).get('parameters', {}))
     storage_class_data = {**merged.get('storageClass', {}), 'parameters': storage_class_params}
     
     backend_config = BackendConfig(**backend_data)
-    
-    # ===== COMPATIBILIDAD: Manejar credentials.name anidado =====
-    backend_config_dict = merged.get('backend', {})
-    if 'credentials' in backend_config_dict and isinstance(backend_config_dict['credentials'], dict):
-        credentials_name = backend_config_dict['credentials'].get('name', 'trident-creds')
-        backend_config.credentialsName = credentials_name
     
     # Si hay secret.name definido, usarlo (tiene prioridad)
     secret_data = merged.get('secret', {})
@@ -289,10 +293,8 @@ def load_config(config_file: str = "config.yaml") -> TridentConfig:
         errors.append("  - backend.dataLIF")
     if not backend_config.svm:
         errors.append("  - backend.svm")
-    if not secret_config.username:
-        errors.append("  - secret.username")
-    if not secret_config.password:
-        errors.append("  - secret.password")
+    # Las credenciales son opcionales si ya existe un secret en el cluster
+    # y solo se define credentials.name en el backend
     
     if errors:
         raise ValueError(
@@ -400,7 +402,7 @@ def create_backend_yaml(config: BackendConfig, secret_name: str) -> Dict[str, An
     return {
         'apiVersion': 'trident.netapp.io/v1',
         'kind': 'TridentBackendConfig',
-        'metadata': {'name': backend['name']},
+        'metadata': {'name': backend['name'], 'namespace': 'trident'},
         'spec': {
             'version': 1,
             'backendName': auto_backend_name,

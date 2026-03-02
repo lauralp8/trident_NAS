@@ -2,6 +2,7 @@ apiVersion: trident.netapp.io/v1
 kind: TridentBackendConfig
 metadata:
   name: backend-jc-nas1200
+  namespace: trident
 spec:
   version: 1
   backendName: ontap-nas_192_168_205_203
