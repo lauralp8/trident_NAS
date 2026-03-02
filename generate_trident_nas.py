@@ -550,7 +550,8 @@ def generate_trident_files(
     
     # Comentar campos vacíos
     comment_empty_fields(backend_file)
-    print(f"Archivo generado: {backend_file}")
+    print(f"✓ Archivo generado: {backend_file}")
+    print(f"\n⚠ IMPORTANTE: Aplica primero secret.yaml, luego backend_storage.yaml")
     
 
 
@@ -600,8 +601,8 @@ def main(config_file: str = None) -> None:
     print(f"  1. Edita config.yaml y secret.yaml")
     print(f"  2. Ejecuta: python generate_trident_nas.py")
     print(f"  3. Aplica los archivos generados:")
-    print(f"     - kubectl apply -f backend_storage.yaml -n trident")
     print(f"     - kubectl apply -f secret.yaml -n trident")
+    print(f"     - kubectl apply -f backend_storage.yaml -n trident")
     print(f"  4. Verifica los recursos creados:")
     print(f"     - kubectl get tridentbackendconfig -n trident")
     print(f"\n ------------------------------------------------------------------")
