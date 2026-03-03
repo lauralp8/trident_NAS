@@ -30,10 +30,14 @@ backend:
   #   - 10.0.0.0/8       # Redes adicionales si necesario
   
   # Labels para organización y filtrado (usado en StorageClass selector)
+  # IMPORTANTE: labels debe ser un objeto (mapa clave-valor), NO un string
+  # Formato correcto:
   # labels:
   #   environment: lab
   #   backend: nassvm
   #   location: us-east1
+  #   tier: gold
+  
   # Límites de uso (protección contra sobre-aprovisionamiento)
   # limitAggregateUsage: 80%          # Máximo uso del agregado
   # limitVolumeSize: 10Ti             # Tamaño máximo por volumen
@@ -86,6 +90,12 @@ backend:
   
   credentials:
     name: trident-creds              # Debe coincidir con metadata.name en secret.yaml
+    username: vsadmin                # Usuario de acceso al SVM
+    password: Netapp1!               # Contraseña del usuario
+    # Certificados TLS (opcional - para autenticación basada en certificados)
+    # clientCertificate: ""
+    # clientPrivateKey: ""
+    # trustedCACertificate: ""
 
 # STORAGE CLASS - Nombre del storage class en Kubernetes/OpenShift
 storageClass:
@@ -126,40 +136,17 @@ storageClass:
 # SECRET - Credenciales de acceso al storage NetApp
 # ================================================================================
 # 
-# IMPORTANTE: Crea el secret.yaml MANUALMENTE con tus credenciales reales.
-# Este archivo debe contener usuario/contraseña O certificados, nunca ambos.
+# Las credenciales se definen ahora en backend.credentials (arriba).
 # 
 # OPCIÓN A (Usuario y Contraseña - Recomendada para desarrollo):
-#   apiVersion: v1
-#   kind: Secret
-#   metadata:
-#     name: trident-creds
-#     namespace: trident
-#   type: Opaque
-#   stringData:
-#     username: <TU_USUARIO>
-#     password: <TU_CONTRASEÑA>
+#   Descomenta y configura username y password en backend.credentials
 # 
 # OPCIÓN B (Certificados - Recomendada para producción):
-#   apiVersion: v1
-#   kind: Secret
-#   metadata:
-#     name: trident-creds
-#     namespace: trident
-#   type: Opaque
-#   stringData:
-#     clientCertificate: |
-#       -----BEGIN CERTIFICATE-----
-#       <CONTENIDO_CERTIFICADO>
-#       -----END CERTIFICATE-----
-#     clientPrivateKey: |
-#       -----BEGIN PRIVATE KEY-----
-#       <CONTENIDO_CLAVE>
-#       -----END PRIVATE KEY-----
-#     trustedCACertificate: |
-#       -----BEGIN CERTIFICATE-----
-#       <CONTENIDO_CA>
-#       -----END CERTIFICATE-----
+#   Descomenta y configura clientCertificate, clientPrivateKey y trustedCACertificate
+#   en backend.credentials (arriba)
+# 
+# El script generate_trident_nas.py generará automáticamente el secret.yaml
+# con las credenciales definidas en config.yaml.
 # 
 # Aplica: kubectl apply -f secret.yaml -n trident
 # El backend referenciará el secret mediante credentials.name (arriba)

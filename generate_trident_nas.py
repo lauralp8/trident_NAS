@@ -13,11 +13,11 @@ DESCRIPCIÓN:
 
 ARCHIVOS GENERADOS:
     - backend_storage_nas.yaml: TridentBackendConfig + StorageClass de Kubernetes
+    - secret.yaml: Secret con credenciales (generado desde config.yaml)
     
 NOTA IMPORTANTE:
-    El archivo secret.yaml NO se genera automáticamente por seguridad.
-    Debes crearlo manualmente con tus credenciales reales y aplicarlo
-    al clúster antes del backend.
+    Las credenciales (username/password o certificados) se definen en config.yaml
+    y el script genera automáticamente secret.yaml con estos valores.
 
 USO:
     python generate_trident_nas.py
@@ -109,7 +109,7 @@ class BackendConfig:
     autoExportPolicy: bool = False
     autoExportCIDRs: list = field(default_factory=lambda: ['0.0.0.0/0', '::/0'])
     credentialsName: str = 'trident-creds'  # Nombre del secret de credenciales
-    labels: str = ''
+    labels: Dict[str, str] = field(default_factory=dict)  # Labels como mapa key-value
     limitAggregateUsage: str = ''
     limitVolumeSize: str = ''
     nfsMountOptions: str = ''
@@ -286,8 +286,20 @@ def load_config(config_file: str = "config.yaml") -> TridentConfig:
     # ===== COMPATIBILIDAD: Manejar credentials.name anidado =====
     backend_config_dict = merged.get('backend', {}).copy()
     credentials_name = 'trident-creds'  # valor por defecto
+    credentials_username = ''
+    credentials_password = ''
+    credentials_client_cert = ''
+    credentials_client_key = ''
+    credentials_trusted_ca = ''
+    
     if 'credentials' in backend_config_dict and isinstance(backend_config_dict['credentials'], dict):
-        credentials_name = backend_config_dict['credentials'].get('name', 'trident-creds')
+        credentials = backend_config_dict['credentials']
+        credentials_name = credentials.get('name', 'trident-creds')
+        credentials_username = credentials.get('username', '')
+        credentials_password = credentials.get('password', '')
+        credentials_client_cert = credentials.get('clientCertificate', '')
+        credentials_client_key = credentials.get('clientPrivateKey', '')
+        credentials_trusted_ca = credentials.get('trustedCACertificate', '')
     
     # Remover campos especiales antes de construir backend_data
     backend_config_dict.pop('credentials', None)
@@ -307,10 +319,21 @@ def load_config(config_file: str = "config.yaml") -> TridentConfig:
     
     backend_config = BackendConfig(**backend_data)
     
-    # Si hay secret.name definido, usarlo (tiene prioridad)
+    # ===== CONSTRUIR SECRET CON CREDENCIALES DESDE CONFIG.YAML =====
+    # Si hay secret.name definido en config, usarlo (tiene prioridad)
+    # Pero las credenciales vienen de backend.credentials
     secret_data = merged.get('secret', {})
-    if not secret_data.get('name'):
-        secret_data['name'] = backend_config.credentialsName
+    
+    # Usar el credentials_name extraído de backend.credentials
+    secret_data['name'] = secret_data.get('name') or credentials_name
+    
+    # Usar las credenciales extraídas de backend.credentials
+    # (tienen prioridad sobre cualquier valor en secret)
+    secret_data['username'] = credentials_username or secret_data.get('username', '')
+    secret_data['password'] = credentials_password or secret_data.get('password', '')
+    secret_data['clientCertificate'] = credentials_client_cert or secret_data.get('clientCertificate', '')
+    secret_data['clientPrivateKey'] = credentials_client_key or secret_data.get('clientPrivateKey', '')
+    secret_data['trustedCACertificate'] = credentials_trusted_ca or secret_data.get('trustedCACertificate', '')
     
     # ===== VALIDACIONES DE CAMPOS OBLIGATORIOS =====
     
@@ -358,7 +381,7 @@ def comment_empty_fields(filepath: str) -> None:
     # Campos que son contenedores y nunca deben ser comentados
     container_fields = {
         'metadata', 'annotations', 'parameters', 'credentials', 
-        'debugTraceFlags', 'spec', 'defaults', 'data', 'stringData'
+        'debugTraceFlags', 'spec', 'defaults', 'data', 'stringData', 'labels'
     }
     
     with open(filepath, 'r', encoding='utf-8') as f:
@@ -564,6 +587,7 @@ def generate_trident_files(
     # Generar recursos
     backend = create_backend_yaml(config.backend, config.secret.name)
     storage_class = create_storage_class_yaml(config.storageClass)
+    secret = create_secret_yaml(config.secret)
     
     # Escribir backend y storage class
     with open(backend_file, 'w', encoding='utf-8') as f:
@@ -573,7 +597,13 @@ def generate_trident_files(
     
     # Comentar campos vacíos
     comment_empty_fields(backend_file)
-    print(f"Archivo generado: {backend_file}")
+    print(f"✓ Archivo generado: {backend_file}")
+    
+    # Escribir secret
+    with open(secret_file, 'w', encoding='utf-8') as f:
+        yaml.dump(secret, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+    
+    print(f"✓ Archivo generado: {secret_file}")
     
 
 
@@ -620,13 +650,15 @@ def main(config_file: str = None) -> None:
     
     print(f"\n ------------------------------------------------------------------")
     print(f"\n Instrucciones:")
-    print(f"  1. Edita config.yaml y secret.yaml")
+    print(f"  1. Edita config.yaml con tus valores (managementLIF, dataLIF, svm, credenciales)")
     print(f"  2. Ejecuta: python generate_trident_nas.py")
     print(f"  3. Aplica los archivos generados:")
     print(f"     - kubectl apply -f secret.yaml -n trident")
     print(f"     - kubectl apply -f backend_storage_nas.yaml -n trident")
     print(f"  4. Verifica los recursos creados:")
+    print(f"     - kubectl get secret trident-creds -n trident")
     print(f"     - kubectl get tridentbackendconfig -n trident")
+    print(f"     - kubectl get storageclass")
     print(f"\n ------------------------------------------------------------------")
 
 

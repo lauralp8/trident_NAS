@@ -506,6 +506,45 @@ Con estos dos archivos mínimos, puedes ejecutar el generador:
 python generate_trident_nas.py
 ```
 
+### 5. Ejemplo con Labels (Organización y Filtrado)
+
+Las **labels** permiten etiquetar backends para organización y uso en selectores de StorageClass.
+
+#### config.yaml con labels
+```yaml
+backend:
+  managementLIF: "192.168.100.10"
+  dataLIF: "192.168.100.11"
+  svm: "svm_kubernetes"
+  
+  # ⚠️ IMPORTANTE: labels debe ser un objeto (mapa clave-valor), NO un string
+  labels:
+    environment: production
+    tier: gold
+    location: us-east1
+    team: platform
+  
+  credentials:
+    name: "ontap-creds"
+
+storageClass:
+  name: "nas-gold-storage"
+  parameters:
+    selector: "tier=gold; location=us-east1"  # Filtra backends con estas labels
+```
+
+**Formato correcto de labels:**
+- ✅ **Correcto**: Objeto con pares clave-valor
+  ```yaml
+  labels:
+    key1: value1
+    key2: value2
+  ```
+- ❌ **Incorrecto**: String (causa error de unmarshal)
+  ```yaml
+  labels: "key1=value1,key2=value2"  # ❌ NO USAR
+  ```
+
 ---
 
 ## Arquitectura y Componentes
@@ -653,7 +692,7 @@ Los siguientes campos son **obligatorios** en config.yaml y el script fallará s
 | Parámetro | Tipo | Por Defecto | Descripción |
 |-----------|------|-------------|-------------|
 | `nfsMountOptions` | string | `""` | Opciones de montaje NFS adicionales |
-| `labels` | string | `""` | Etiquetas arbitrarias para el backend |
+| `labels` | object (map) | `{}` | Etiquetas clave-valor para organización y filtrado del backend. Formato: `{key1: value1, key2: value2}` |
 
 ### Backend - Debug y Troubleshooting
 
