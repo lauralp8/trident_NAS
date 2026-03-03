@@ -11,75 +11,116 @@
 # ================================================================================
 
 # BACKEND - Configuración del almacenamiento NetApp
+# Basado en NetApp Lab "Astra Trident Advanced Features" v6.0
 backend:
   # === CAMPOS OBLIGATORIOS ===
-  managementLIF: nassvm-mgmt.demo.netapp.com
-  dataLIF: nassvm.demo.netapp.com
-  svm: nassvm
+  # IPs del NetApp Lab Environment (cluster1, ONTAP 9.14.1)
+  managementLIF: nassvm-mgmt.demo.netapp.com  # 192.168.0.* - Management interface del SVM
+  dataLIF: nassvm.demo.netapp.com             # Data interface para montaje NFS
+  svm: nassvm                                  # Storage Virtual Machine para NAS
   
-  # === CAMPOS OPCIONALES ===
-  # name: backend-jc-nas1200
-  # storagePrefix: trident
-  # credentialsName: trident-creds
-  # autoExportPolicy: false
+  # === CAMPOS OPCIONALES DEL LAB ===
+  # name: backend-nas-lab            # Nombre descriptivo del backend
+  # storagePrefix: trident           # Prefijo para volúmenes ONTAP (trident_pvc_...)
+  
+  # Auto Export Policy: crea automáticamente export policies para volúmenes NFS
+  # autoExportPolicy: true
   # autoExportCIDRs:
-  #   - 0.0.0.0/0
-  #   - ::/0
-  # labels: ""
-  # limitAggregateUsage: ""
-  # limitVolumeSize: ""
-  # nfsMountOptions: ""
-  # qtreesPerFlexvol: "200"
+  #   - 192.168.0.0/24   # Red del lab Kubernetes
+  #   - 10.0.0.0/8       # Redes adicionales si necesario
+  
+  # Labels para organización y filtrado (usado en StorageClass selector)
+  # labels:
+  #   environment: lab
+  #   backend: nassvm
+  #   location: us-east1
+  # Límites de uso (protección contra sobre-aprovisionamiento)
+  # limitAggregateUsage: 80%          # Máximo uso del agregado
+  # limitVolumeSize: 10Ti             # Tamaño máximo por volumen
+  
+  # Opciones de montaje NFS (performance tuning)
+  # nfsMountOptions: nfsvers=4.1,tcp,bg,timeo=600,rsize=65536,wsize=65536
+  
+  # qtreesPerFlexvol: 200             # Qtrees por FlexVol (solo para qtree pools)
   
   # === CONFIGURACIÓN AVANZADA DEL BACKEND ===
-  # namespace: trident
-  # version: 1
-  # backendName: ""  # Si vacío, se auto-genera como ontap-nas_<dataLIF>
-  # storageDriverName: ontap-nas
-  # nasType: nfs
-  # useREST: true
+  # namespace: trident                 # Namespace de Trident en Kubernetes
+  # version: 1                         # Versión del backend config
+  # backendName: ""                    # Auto-genera como ontap-nas_<dataLIF>
+  # storageDriverName: ontap-nas       # Driver: ontap-nas | ontap-nas-economy | ontap-nas-flexgroup
+  # nasType: nfs                       # Tipo: nfs | smb
+  # useREST: true                      # Usar ONTAP REST API (9.11.1+) en lugar de ZAPI
   
   # === DEBUG FLAGS ===
   # debugTraceFlags:
   #   api: false
   #   method: false
   
-  # === DEFAULTS DE VOLÚMENES ===
+  # === DEFAULTS DE VOLÚMENES (valores aplicados a nuevos PVs) ===
   # defaults:
-  #   spaceReserve: none
-  #   spaceAllocation: "false"
-  #   snapshotPolicy: none
-  #   snapshotReserve: "none"
-  #   unixPermissions: "755"
-  #   snapshotDir: "true"
-  #   exportPolicy: default
-  #   securityStyle: unix
-  #   encryption: "false"
-  #   qosPolicy: ""
-  #   adaptiveQosPolicy: ""
-  #   nameTemplate: ""
-  #   aggregate: ""
+  #   # Garantías de espacio
+  #   spaceReserve: none              # none | volume | file
+  #   spaceAllocation: false          # Thin provisioning habilitado
+  #   
+  #   # Snapshots
+  #   snapshotPolicy: none            # Política ONTAP: none | default | daily | weekly
+  #   snapshotReserve: none           # Espacio reservado: none | 5% | 10%
+  #   snapshotDir: true               # .snapshot visible en montajes NFS
+  #   
+  #   # Permisos y seguridad
+  #   unixPermissions: 0755           # Permisos Unix predeterminados
+  #   exportPolicy: default           # Export policy NFS de ONTAP
+  #   securityStyle: unix             # unix | ntfs | mixed
+  #   encryption: false               # NetApp Volume Encryption (NVE)
+  #   
+  #   # Performance (QoS del Lab)
+  #   qosPolicy: ""                   # Traditional QoS: qa (500MB/s)
+  #   adaptiveQosPolicy: ""           # Adaptive QoS: extreme | performance | value
+  #   
+  #   # Ubicación (agregados del Lab)
+  #   aggregate: ""                   # Específico: aggr1 (HDD) | aggr2 (SSD)
+  #   tieringPolicy: none             # none | snapshot-only | auto | all
+  #   
+  #   # Plantilla de nombres
+  #   nameTemplate: ""                # Ej: "{{.volume.Namespace}}_{{.volume.Name}}"
+  
   credentials:
-    name: trident-creds
+    name: trident-creds              # Debe coincidir con metadata.name en secret.yaml
 
 # STORAGE CLASS - Nombre del storage class en Kubernetes/OpenShift
 storageClass:
   # === CAMPOS OBLIGATORIOS ===
-  name: rhoso-nas
+  name: rhoso-nas                    # Nombre usado en PVCs
   
   # === CAMPOS OPCIONALES ===
-  # isDefault: true
-  # syncWave: "5"
-  # reclaimPolicy: Delete
-  # allowVolumeExpansion: true
-  # volumeBindingMode: Immediate
+  # isDefault: true                  # Marcar como StorageClass predeterminado
+  # syncWave: "5"                    # Para ArgoCD/GitOps sync waves
+  # reclaimPolicy: Delete            # Delete | Retain (qué hacer al borrar PVC)
+  # allowVolumeExpansion: true       # Permitir resize dinámico de PVs
+  # volumeBindingMode: Immediate     # Immediate | WaitForFirstConsumer
   
   # === PARÁMETROS DEL STORAGE CLASS ===
+  # Estos filtran qué backend usar basado en sus capacidades
   # parameters:
-  #   backendType: ontap-nas
-  #   media: ssd
-  #   provisioningType: thin
-  #   snapshots: "true"
+  #   # Filtro básico por driver
+  #   backendType: ontap-nas         # ontap-nas | ontap-nas-economy | ontap-nas-flexgroup
+  #   
+  #   # Filtro por media (del Lab: aggr1=HDD, aggr2=SSD)
+  #   media: ssd                     # hdd | ssd | hybrid
+  #   
+  #   # Filtro por provisioning
+  #   provisioningType: thin         # thin | thick
+  #   
+  #   # Capacidades avanzadas
+  #   snapshots: "true"              # Soporte de snapshots
+  #   clones: "true"                 # Soporte de clonación
+  #   encryption: "true"             # NetApp Volume Encryption
+  #   
+  #   # Virtual Storage Pools (del Lab)
+  #   storagePools: BackendForNFS:aggr2  # backend:aggregate específico
+  #   
+  #   # Selector por labels (definidos en backend.labels)
+  #   selector: "environment=lab; location=us-east1"
 
 # ================================================================================
 # SECRET - Credenciales de acceso al storage NetApp
