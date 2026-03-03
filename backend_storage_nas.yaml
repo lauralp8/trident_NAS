@@ -19,9 +19,6 @@ spec:
   - 0.0.0.0/0
   - ::/0
   # labels: ''
-  # clientCertificate: ''
-  # clientPrivateKey: ''
-  # trustedCACertificate: ''
   # limitAggregateUsage: ''
   # limitVolumeSize: ''
   # nfsMountOptions: ''
@@ -30,7 +27,7 @@ spec:
     spaceReserve: none
     spaceAllocation: 'false'
     snapshotPolicy: none
-    snapshotReserve: '0'
+    snapshotReserve: none
     unixPermissions: '755'
     snapshotDir: 'true'
     exportPolicy: default

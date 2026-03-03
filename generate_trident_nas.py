@@ -110,9 +110,6 @@ class BackendConfig:
     autoExportCIDRs: list = field(default_factory=lambda: ['0.0.0.0/0', '::/0'])
     credentialsName: str = 'trident-creds'  # Nombre del secret de credenciales
     labels: str = ''
-    clientCertificate: str = ''
-    clientPrivateKey: str = ''
-    trustedCACertificate: str = ''
     limitAggregateUsage: str = ''
     limitVolumeSize: str = ''
     nfsMountOptions: str = ''
@@ -174,19 +171,31 @@ class SecretConfig:
     Credenciales de acceso al backend NetApp ONTAP.
     
     Almacena las credenciales que Trident usa para autenticarse.
+    Incluye soporte para autenticación basada en certificados.
     
     Campos obligatorios:
-        - username: Usuario 
-        - password: Contraseña del usuario
+        - username: Usuario (obligatorio si no se usan certificados)
+        - password: Contraseña del usuario (obligatorio si no se usan certificados)
+    
+    Campos opcionales para autenticación con certificados:
+        - clientCertificate: Certificado cliente en formato PEM
+        - clientPrivateKey: Clave privada del certificado cliente en formato PEM
+        - trustedCACertificate: Certificado CA raíz de confianza en formato PEM
     
     Args:
         name: Nombre del Secret en Kubernetes (default: trident-creds)
-        username: Usuario - OBLIGATORIO
-        password: Contraseña del usuario - OBLIGATORIO
+        username: Usuario
+        password: Contraseña del usuario
+        clientCertificate: Certificado cliente (opcional)
+        clientPrivateKey: Clave privada (opcional)
+        trustedCACertificate: CA de confianza (opcional)
     """
     name: str = 'trident-creds'
-    username: str = ''  # Campo obligatorio - debe especificarse en config.yaml
-    password: str = ''  # Campo obligatorio - debe especificarse en config.yaml
+    username: str = ''
+    password: str = ''
+    clientCertificate: str = ''
+    clientPrivateKey: str = ''
+    trustedCACertificate: str = ''
 
 
 @dataclass
@@ -481,6 +490,7 @@ def create_secret_yaml(config: SecretConfig) -> Dict[str, Any]:
     
     Crea un Secret Opaque de Kubernetes que almacena las credenciales
     que Trident usa para autenticarse contra el SVM de NetApp ONTAP.
+    Soporta tanto autenticación username/password como certificados.
     
     Args:
         config: Configuración del Secret validada
@@ -488,15 +498,28 @@ def create_secret_yaml(config: SecretConfig) -> Dict[str, Any]:
     Returns:
         Dict representando Secret listo para serializar a YAML
     """
+    string_data = {}
+    
+    # Agregar username/password si están definidos
+    if config.username:
+        string_data['username'] = config.username
+    if config.password:
+        string_data['password'] = config.password
+    
+    # Agregar certificados si están definidos
+    if config.clientCertificate:
+        string_data['clientCertificate'] = config.clientCertificate
+    if config.clientPrivateKey:
+        string_data['clientPrivateKey'] = config.clientPrivateKey
+    if config.trustedCACertificate:
+        string_data['trustedCACertificate'] = config.trustedCACertificate
+    
     return {
         'apiVersion': 'v1',
         'kind': 'Secret',
-        'metadata': {'name': config.name},
+        'metadata': {'name': config.name, 'namespace': 'trident'},
         'type': 'Opaque',
-        'stringData': {
-            'username': config.username,
-            'password': config.password
-        }
+        'stringData': string_data
     }
 
 

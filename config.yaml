@@ -26,9 +26,6 @@ backend:
   #   - 0.0.0.0/0
   #   - ::/0
   # labels: ""
-  # clientCertificate: ""
-  # clientPrivateKey: ""
-  # trustedCACertificate: ""
   # limitAggregateUsage: ""
   # limitVolumeSize: ""
   # nfsMountOptions: ""
@@ -88,17 +85,40 @@ storageClass:
 # SECRET - Credenciales de acceso al storage NetApp
 # ================================================================================
 # 
-# OPCIÓN 1 (RECOMENDADA - MÁS SEGURA):
-#   - NO definir esta sección
-#   - Crear secret.yaml manualmente con tus credenciales
-#   - Aplicar: kubectl apply -f secret.yaml -n trident
-#   - El backend referenciará el secret mediante credentials.name (arriba)
+# IMPORTANTE: Crea el secret.yaml MANUALMENTE con tus credenciales reales.
+# Este archivo debe contener usuario/contraseña O certificados, nunca ambos.
 # 
-# OPCIÓN 2 (DESARROLLO):
-#   - Descomentar las líneas de abajo
-#   - El script generará secret.yaml automáticamente
-#   - ADVERTENCIA: Las credenciales quedan en config.yaml
+# OPCIÓN A (Usuario y Contraseña - Recomendada para desarrollo):
+#   apiVersion: v1
+#   kind: Secret
+#   metadata:
+#     name: trident-creds
+#     namespace: trident
+#   type: Opaque
+#   stringData:
+#     username: <TU_USUARIO>
+#     password: <TU_CONTRASEÑA>
 # 
-# secret:
-#   username: vsadmin
-#   password: Netapp1!
+# OPCIÓN B (Certificados - Recomendada para producción):
+#   apiVersion: v1
+#   kind: Secret
+#   metadata:
+#     name: trident-creds
+#     namespace: trident
+#   type: Opaque
+#   stringData:
+#     clientCertificate: |
+#       -----BEGIN CERTIFICATE-----
+#       <CONTENIDO_CERTIFICADO>
+#       -----END CERTIFICATE-----
+#     clientPrivateKey: |
+#       -----BEGIN PRIVATE KEY-----
+#       <CONTENIDO_CLAVE>
+#       -----END PRIVATE KEY-----
+#     trustedCACertificate: |
+#       -----BEGIN CERTIFICATE-----
+#       <CONTENIDO_CA>
+#       -----END CERTIFICATE-----
+# 
+# Aplica: kubectl apply -f secret.yaml -n trident
+# El backend referenciará el secret mediante credentials.name (arriba)
