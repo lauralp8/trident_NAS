@@ -47,13 +47,13 @@ python generate_trident_nas.py
 ```
 
 **Resultado:**
-- ✅ `backend_storage.yaml` generado (solo referencia al secret)
+- ✅ `backend_storage_nas.yaml` generado (solo referencia al secret)
 - ℹ️ `secret.yaml` NO generado (se usa el existente)
 
 ### 6. Aplicar el backend
 
 ```bash
-kubectl apply -f backend_storage.yaml
+kubectl apply -f backend_storage_nas.yaml
 kubectl get tbc -n trident
 ```
 
@@ -79,7 +79,7 @@ secret:
   password: Netapp1!
 ```
 
-2. El script generará tanto `backend_storage.yaml` como `secret.yaml`
+2. El script generará tanto `backend_storage_nas.yaml` como `secret.yaml`
 
 **ADVERTENCIA:** Las credenciales quedan expuestas en `config.yaml`
 
@@ -98,7 +98,7 @@ kubectl get secret trident-creds -n trident
 python generate_trident_nas.py
 
 # 4. Aplicar backend
-kubectl apply -f backend_storage.yaml
+kubectl apply -f backend_storage_nas.yaml
 
 # 5. Verificar estado
 kubectl get tbc -n trident
