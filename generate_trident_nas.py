@@ -27,7 +27,6 @@ CONFIGURACIÓN:
     
     backend:
       managementLIF: IP_DE_GESTION
-      dataLIF: IP_DE_DATOS
       svm: NOMBRE_DEL_SVM
     
     storageClass:
@@ -97,13 +96,11 @@ class BackendConfig:
     
     Campos obligatorios:
         - managementLIF: IP de gestión del SVM
-        - dataLIF: IP de datos para conexiones NFS
         - svm: Storage Virtual Machine en ONTAP
 
     """
     name: str = 'backend-jc-nas1200' 
     managementLIF: str = ''  # Campo obligatorio - debe especificarse en config.yaml
-    dataLIF: str = ''  # Campo obligatorio - debe especificarse en config.yaml
     svm: str = ''  # Campo obligatorio - debe especificarse en config.yaml
     storagePrefix: str = 'trident'
     autoExportPolicy: bool = False
@@ -117,7 +114,7 @@ class BackendConfig:
     # Campos configurables del spec (antes hardcodeados)
     namespace: str = 'trident'
     version: int = 1
-    backendName: str = ''  # Si vacío, se auto-genera como ontap-nas_<dataLIF>
+    backendName: str = ''  # Si vacío, se auto-genera como <storageDriverName>_<managementLIF>
     storageDriverName: str = 'ontap-nas'
     nasType: str = 'nfs'
     useREST: bool = True
@@ -252,7 +249,7 @@ def load_config(config_file: str = "config.yaml") -> TridentConfig:
         1. Lee el archivo config.yaml del usuario
         2. Fusiona con valores por defecto
         3. Reconstruye objetos dataclass con validación de tipos
-        4. Valida campos obligatorios (managementLIF, dataLIF, svm)
+        4. Valida campos obligatorios (managementLIF, svm)
         5. Maneja compatibilidad de formatos (credentials anidado vs simple)
     
     Args:
@@ -342,8 +339,6 @@ def load_config(config_file: str = "config.yaml") -> TridentConfig:
     errors = []
     if not backend_config.managementLIF:
         errors.append("  - backend.managementLIF")
-    if not backend_config.dataLIF:
-        errors.append("  - backend.dataLIF")
     if not backend_config.svm:
         errors.append("  - backend.svm")
     # Las credenciales son opcionales si ya existe un secret en el cluster
@@ -430,7 +425,7 @@ def create_backend_yaml(config: BackendConfig, secret_name: str) -> Dict[str, An
     Transforma la configuración de Python en un diccionario que representa
     el recurso Kubernetes TridentBackendConfig. Incluye lógica especial:
     
-    - Auto-generación de backendName basado en dataLIF si no se especifica
+    - Auto-generación de backendName basado en managementLIF si no se especifica
     - Campos configurables: storageDriverName, nasType, useREST, version, namespace
     - Inclusión de defaults y debugTraceFlags como subsecciones
     
@@ -457,8 +452,8 @@ def create_backend_yaml(config: BackendConfig, secret_name: str) -> Dict[str, An
     
     # Auto-generar backendName si está vacío
     if not backend_name:
-        data_lif_sanitized = backend['dataLIF'].replace('.', '_')
-        backend_name = f"ontap-nas_{data_lif_sanitized}"
+        management_lif_sanitized = backend['managementLIF'].replace('.', '_')
+        backend_name = f"{storage_driver_name}_{management_lif_sanitized}"
     
     return {
         'apiVersion': 'trident.netapp.io/v1',
@@ -650,7 +645,7 @@ def main(config_file: str = None) -> None:
     
     print(f"\n ------------------------------------------------------------------")
     print(f"\n Instrucciones:")
-    print(f"  1. Edita config.yaml con tus valores (managementLIF, dataLIF, svm, credenciales)")
+    print(f"  1. Edita config.yaml con tus valores (managementLIF, svm, credenciales)")
     print(f"  2. Ejecuta: python generate_trident_nas.py")
     print(f"  3. Aplica los archivos generados:")
     print(f"     - kubectl apply -f secret.yaml -n trident")
