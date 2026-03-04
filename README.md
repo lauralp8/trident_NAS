@@ -1,6 +1,6 @@
 # Generador de Configuración NetApp Trident NAS
 
-**Versión:** 2.1  
+**Versión:** 2.0 (Optimizada)  
 **Autor:** Professional Services NetApp  
 **Fecha:** Marzo 2026
 
@@ -11,15 +11,16 @@
 1. [Descripción Funcional](#descripción-funcional)
 2. [Requisitos del Sistema](#requisitos-del-sistema)
 3. [Instalación](#instalación)
-4. [Arquitectura y Componentes](#arquitectura-y-componentes)
-5. [Parametrización Detallada](#parametrización-detallada)
-6. [Guía de Uso](#guía-de-uso)
-7. [Flujo Interno del Proceso](#flujo-interno-del-proceso)
-8. [Logs y Diagnóstico](#logs-y-diagnóstico)
-9. [Catálogo de Errores](#catálogo-de-errores)
-10. [Consideraciones de Seguridad](#consideraciones-de-seguridad)
-11. [Mejores Prácticas](#mejores-prácticas)
-12. [Referencias](#referencias)
+4. [Guía de Uso Rápido](#guía-de-uso-rápido)
+5. [Arquitectura y Componentes](#arquitectura-y-componentes)
+6. [Parametrización Detallada](#parametrización-detallada)
+7. [Configuración Avanzada](#configuración-avanzada)
+8. [Flujo Interno del Proceso](#flujo-interno-del-proceso)
+9. [Logs y Diagnóstico](#logs-y-diagnóstico)
+10. [Catálogo de Errores](#catálogo-de-errores)
+11. [Consideraciones de Seguridad](#consideraciones-de-seguridad)
+12. [Mejores Prácticas](#mejores-prácticas)
+13. [Referencias](#referencias)
 
 ---
 
@@ -27,37 +28,43 @@
 
 ### Propósito
 
-Generador automatizado de configuraciones YAML para NetApp Trident CSI (Container Storage Interface) en entornos Kubernetes y OpenShift. La herramienta facilita la integración entre clusters de contenedores y almacenamiento ONTAP NAS mediante la generación programática de recursos Kubernetes estandarizados y validados.
+Generador automatizado y optimizado de configuraciones YAML para NetApp Trident CSI (Container Storage Interface) en entornos Kubernetes y OpenShift. Basado en arquitectura moderna con Python dataclasses, tipado fuerte y validación automática para garantizar configuraciones seguras y estandarizadas.
 
 ### Funcionalidades Principales
 
-**Generación de Recursos Kubernetes:**
-- TridentBackendConfig: Define la conexión y parámetros del backend de almacenamiento ONTAP
-- StorageClass: Configura clases de almacenamiento consumibles por aplicaciones
-- Secret: Almacena credenciales de autenticación de forma segura
+**Generación Automática de Recursos:**
+- **TridentBackendConfig**: Define la conexión y parámetros del backend de almacenamiento ONTAP
+- **StorageClass**: Configura clases de almacenamiento consumibles por aplicaciones
+- **Secret**: Auto-generado desde `config.yaml` con credenciales cifradas
+
+**Arquitectura Moderna:**
+- **Dataclasses Python**: Tipado fuerte y validación automática de tipos
+- **Configuración Unificada**: Todo en un solo archivo `config.yaml` (incluyendo credenciales)
+- **Fusión Inteligente**: Combina valores de usuario con defaults sin sobrescribir configuraciones
+- **Auto-Generación de Nombres**: BackendName generado automáticamente desde managementLIF
 
 **Validación y Seguridad:**
 - Validación automática de campos obligatorios antes de la generación
-- Verificación de tipos de datos y formatos
+- Verificación de tipos de datos y formatos con Python type hints
 - Soporte para autenticación dual: usuario/contraseña o certificados TLS
-- Separación de credenciales sensibles del código de configuración
+- Credenciales almacenadas en `config.yaml` y auto-generadas en `secret.yaml`
+- Comentado automático de campos opcionales no utilizados para mejor legibilidad
 
-**Características Avanzadas:**
-- Auto-generación de nombres de backend basados en dataLIF
-- Fusión inteligente de configuración de usuario con valores predeterminados
-- Comentado automático de campos opcionales no utilizados
-- Arquitectura modular basada en dataclasses Python con tipado fuerte
-- Configuración centralizada mediante archivo YAML estructurado
+**Características Optimizadas:**
+- Configuración centralizada: define credenciales una sola vez en `config.yaml`
+- Auto-generación de `secret.yaml` con credenciales desde `config.yaml`
+- Compatibilidad con formatos legacy (backend.credentials anidado)
+- Sin necesidad de editar múltiples archivos
+- Comentado inteligente de campos vacíos en YAML generado
 
 ### Casos de Uso
 
-- Despliegue inicial de backends Trident NAS en nuevos clusters
-- Estandarización de configuraciones en múltiples entornos
-- Migración de configuraciones legacy a formato TridentBackendConfig
-- Automatización de aprovisionamiento de almacenamiento en pipelines CI/CD
-- Generación rápida de configuraciones para entornos de desarrollo/pruebas
-
----
+- **Despliegue Inicial**: Configuración rápida de backends Trident NAS en nuevos clusters
+- **Estandarización**: Configuraciones uniformes en múltiples entornos (dev, test, prod)
+- **Migración**: Conversión de configuraciones legacy a TridentBackendConfig moderno
+- **CI/CD**: Automatización de aprovisionamiento de almacenamiento en pipelines
+- **Laboratorios**: Generación rápida de configuraciones para entornos de prueba
+- **Rotación de Credenciales**: Actualización centralizada desde un solo archivo
 
 ---
 
@@ -66,23 +73,18 @@ Generador automatizado de configuraciones YAML para NetApp Trident CSI (Containe
 ### Software Requerido
 
 **Python:**
-- Versión: Python 3.9 
+- Versión: Python 3.9
 - Librerías: PyYAML >= 6.0
 
 **Plataforma de Contenedores:**
-- Kubernetes:
-  o	Client Version: v1.29.4
-  o	Kustomize Version: v5.0.4-0.20230601165947-6ce0bf390ce3
-  o	Server Version: v1.29.4
-- NetApp Trident 24.02 
+- Kubernetes 1.29.4+ o OpenShift 4.x
+- NetApp Trident CSI 24.02
 - Acceso con permisos de administrador al namespace `trident`
 
 **Conectividad de Red:**
 - Conectividad TCP/IP entre pods de Trident y Management LIF del SVM (puerto 443 para HTTPS)
 - Conectividad NFS entre nodos de Kubernetes y Data LIF del SVM (puertos 111, 2049, 4045-4046)
 - Resolución DNS funcional si se utilizan nombres de host en lugar de IPs
-
----
 
 ---
 
@@ -98,6 +100,93 @@ cd trident_nas
 ### Paso 2: Instalar Dependencias Python
 
 ```bash
+# Usando pip
+pip install -r requirements.txt
+
+# O usando pip3 explícitamente
+pip3 install -r requirements.txt
+```
+
+**Contenido de requirements.txt:**
+```
+PyYAML>=6.0
+```
+
+### Paso 3: Verificar Instalación
+
+```bash
+# Verificar versión de Python
+python --version
+
+# Verificar PyYAML instalado
+python -c "import yaml; print(yaml.__version__)"
+
+# Verificar acceso a Kubernetes/OpenShift
+kubectl version --client
+oc version  # Si usa OpenShift
+```
+
+---
+
+## Guía de Uso Rápido
+
+### Inicio Rápido (3 Pasos)
+
+```bash
+# 1. Editar configuración (solo necesitas tocar este archivo)
+nano config.yaml
+
+# 2. Generar archivos YAML
+python generate_trident_nas.py
+
+# 3. Aplicar en Kubernetes
+kubectl apply -f secret.yaml -n trident
+kubectl apply -f backend_storage_nas.yaml -n trident
+```
+
+### Configuración Mínima Requerida
+
+Edita `config.yaml` con estos valores mínimos:
+
+```yaml
+backend:
+  managementLIF: 192.168.0.135     # IP de gestión del SVM
+  dataLIF: nassvm.demo.netapp.com  # IP/hostname para montajes NFS
+  svm: nassvm                       # Nombre del SVM en ONTAP
+  
+  credentials:
+    name: trident-creds
+    username: vsadmin
+    password: Netapp1!
+
+storageClass:
+  name: rhoso-nas
+```
+
+### Archivos Generados
+
+El script genera automáticamente:
+
+```
+✓ backend_storage_nas.yaml  # TridentBackendConfig + StorageClass
+✓ secret.yaml               # Credenciales (auto-generado desde config.yaml)
+```
+
+### Verificación Post-Despliegue
+
+```bash
+# Verificar Secret creado
+kubectl get secret trident-creds -n trident
+
+# Verificar TridentBackendConfig
+kubectl get tbc -n trident
+
+# Verificar StorageClass
+kubectl get storageclass
+
+# Ver estado del backend
+kubectl describe tbc <nombre-backend> -n trident
+```
 # Usando pip
 pip install -r requirements.txt
 
@@ -301,164 +390,671 @@ python -c "import yaml; yaml.safe_load(open('config.yaml'))"
 
 ---
 
-### 2. Crear secret.yaml
+## Arquitectura y Componentes
 
-El archivo `secret.yaml` contiene las credenciales de acceso al backend ONTAP. **SIEMPRE se crea manualmente** y nunca se genera automáticamente por razones de seguridad.
+### Cambio Importante en Versión 2.0
 
-#### Estructura del Secret
+**Nueva Arquitectura Centralizada:**
 
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: ontap-credentials  # Debe coincidir con backend.credentials.name en config.yaml
-  namespace: trident       # Debe coincidir con backend.namespace
-type: Opaque
-stringData:
-  # Elige UNA de las dos opciones de autenticación:
-  
-  # ========================================
-  # OPCIÓN A: Autenticación Usuario/Contraseña
-  # ========================================
-  username: "vsadmin"
-  password: "MiPassword123!"
-  
-  # ========================================
-  # OPCIÓN B: Autenticación con Certificados TLS
-  # ========================================
-  # clientCertificate: |
-  #   -----BEGIN CERTIFICATE-----
-  #   MIIDXTCCAkWgAwIBAgIJAKL0UG+mRKOzMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV
-  #   BAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX
-  #   ... (contenido del certificado) ...
-  #   -----END CERTIFICATE-----
-  #
-  # clientPrivateKey: |
-  #   -----BEGIN PRIVATE KEY-----
-  #   MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC5j9a7FqZvL3Kp
-  #   n9Wz2H3F8tY9/qK4mN5xT6pO7rS8uV9wX0yA1bC2dE3fG4hI5jK6lM7nO8pQ9rS0
-  #   ... (contenido de la clave privada) ...
-  #   -----END PRIVATE KEY-----
-  #
-  # trustedCACertificate: |
-  #   -----BEGIN CERTIFICATE-----
-  #   MIIDXTCCAkWgAwIBAgIJAKL0UG+mRKOzMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV
-  #   BAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX
-  #   ... (contenido del certificado CA) ...
-  #   -----END CERTIFICATE-----
+En la versión 2.0, se ha simplificado radicalmente la configuración:
+
+- **Antes (v1.x)**: Credenciales en `secret.yaml` (manual) + configuración en `config.yaml`
+- **Ahora (v2.0)**: Todo en `config.yaml` → Script genera automáticamente `secret.yaml`
+
+**Beneficios:**
+- ✅ Un solo archivo para editar (`config.yaml`)
+- ✅ Secret auto-generado con credenciales de `config.yaml`
+- ✅ Sin necesidad de mantener sincronizados múltiples archivos
+- ✅ Rotación de credenciales más simple
+- ✅ Dataclasses con tipado fuerte y validación automática
+
+### Estructura del Proyecto
+
+```
+trident_nas/
+├── generate_trident_nas.py      # Script principal (optimizado v2.0)
+├── config.yaml                  # Configuración unificada (incluye credenciales)
+├── requirements.txt             # Dependencias Python
+├── README.md                    # Este archivo
+├── backend_storage_nas.yaml     # GENERADO: TridentBackendConfig + StorageClass
+└── secret.yaml                  # GENERADO: Credenciales (auto-creado desde config.yaml)
 ```
 
-#### Opción A: Usuario y Contraseña (Recomendado para Desarrollo)
+### Componentes del Sistema
 
-**Cuándo usar:** Entornos de desarrollo/pruebas, configuración rápida.
+#### 1. config.yaml (Configuración Única)
 
-**Campos requeridos:**
-- `username`: Usuario de administración del SVM (ej: vsadmin)
-- `password`: Contraseña del usuario
+Archivo de configuración unificado que contiene:
 
-**Ejemplo:**
+```yaml
+backend:
+  managementLIF: "..."         # Conexión al SVM
+  svm: "..."                   # Storage Virtual Machine
+  credentials:                 # ⚠️ Credenciales ahora aquí
+    name: trident-creds
+    username: vsadmin
+    password: Netapp1!
+  defaults:                    # Configuraciones de volúmenes
+    spaceReserve: none
+    snapshotPolicy: none
+    # ... más opciones
+
+storageClass:
+  name: "rhoso-nas"
+  reclaimPolicy: Delete
+  # ... más opciones
+```
+
+**Campos Obligatorios:**
+- `backend.managementLIF`: IP de gestión del SVM
+- `backend.svm`: Nombre del SVM en ONTAP
+- `backend.credentials.username`: Usuario ONTAP (si no usas certificados)
+- `backend.credentials.password`: Contraseña (si no usas certificados)
+- `storageClass.name`: Nombre del StorageClass en K8s
+
+#### 2. generate_trident_nas.py (Script Optimizado)
+
+Script Python moderno con arquitectura basada en dataclasses:
+
+**Clases Principales:**
+- `BackendConfig`: Configuración del TridentBackendConfig
+- `StorageClassConfig`: Configuración del StorageClass
+- `SecretConfig`: Credenciales (auto-extraídas de config.yaml)
+- `BackendDefaults`: Valores por defecto de volúmenes
+- `DebugTraceFlags`: Flags de depuración
+
+**Funciones Clave:**
+- `load_config()`: Carga y fusiona configuración con defaults
+- `merge_dicts()`: Fusión recursiva inteligente de configuraciones
+- `create_backend_yaml()`: Genera TridentBackendConfig
+- `create_storage_class_yaml()`: Genera StorageClass
+- `create_secret_yaml()`: **NUEVO** - Auto-genera Secret desde config.yaml
+- `comment_empty_fields()`: Comenta campos vacíos en YAML final
+
+**Características:**
+- Validación automática de tipos con Python type hints
+- Auto-generación de backendName desde managementLIF
+- Compatible con formato legacy (credentials anidado)
+- Comentado inteligente de campos opcionales no usados
+
+#### 3. backend_storage_nas.yaml (Generado)
+
+Contiene dos recursos Kubernetes:
+
+**a) TridentBackendConfig:**
+```yaml
+apiVersion: trident.netapp.io/v1
+kind: TridentBackendConfig
+metadata:
+  name: backend-jc-nas1200
+  namespace: trident
+spec:
+  version: 1
+  backendName: ontap-nas_192_168_0_135  # Auto-generado
+  storageDriverName: ontap-nas
+  managementLIF: 192.168.0.135
+  svm: nassvm
+  credentials:
+    name: trident-creds  # Referencia al Secret
+  defaults:
+    spaceReserve: none
+    # ... valores por defecto
+```
+
+**b) StorageClass:**
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: rhoso-nas
+provisioner: csi.trident.netapp.io
+parameters:
+  backendType: ontap-nas
+  media: ssd
+```
+
+#### 4. secret.yaml (Auto-Generado) ⭐ NUEVO
+
+**Auto-generado desde config.yaml**. Ya no es necesario crearlo manualmente.
+
 ```yaml
 apiVersion: v1
 kind: Secret
 metadata:
-  name: ontap-credentials
+  name: trident-creds
   namespace: trident
 type: Opaque
 stringData:
-  username: "vsadmin"
-  password: "MySecurePassword123!"
+  username: vsadmin      # Extraído de config.yaml
+  password: Netapp1!     # Extraído de config.yaml
 ```
 
-#### Opción B: Certificados TLS (Recomendado para Producción)
-
-**Cuándo usar:** Entornos de producción con requisitos de seguridad estrictos.
-
-**Campos requeridos:**
-- `clientCertificate`: Certificado cliente en formato PEM
-- `clientPrivateKey`: Clave privada del certificado en formato PEM
-- `trustedCACertificate`: Certificado de la CA raíz en formato PEM
-
-**Ejemplo:**
+**Importante:** Si usas certificados TLS, inclúyelos en `config.yaml`:
 ```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: ontap-credentials
-  namespace: trident
-type: Opaque
-stringData:
-  clientCertificate: |
-    -----BEGIN CERTIFICATE-----
-    MIIDXTCCAkWgAwIBAgIJAKL0UG+mRKOzMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV
-    BAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX
-    aWRnaXRzIFB0eSBMdGQwHhcNMTgxMjI3MTUzOTU4WhcNMTkxMjI3MTUzOTU4WjBF
-    MQswCQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50
-    ZXJuZXQgV2lkZ2l0cyBQdHkgTHRkMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
-    ... (contenido completo del certificado) ...
-    -----END CERTIFICATE-----
-  clientPrivateKey: |
-    -----BEGIN PRIVATE KEY-----
-    MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC5j9a7FqZvL3Kp
-    n9Wz2H3F8tY9/qK4mN5xT6pO7rS8uV9wX0yA1bC2dE3fG4hI5jK6lM7nO8pQ9rS0
-    ... (contenido completo de la clave privada) ...
-    -----END PRIVATE KEY-----
-  trustedCACertificate: |
-    -----BEGIN CERTIFICATE-----
-    MIIDXTCCAkWgAwIBAgIJAKL0UG+mRKOzMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV
-    BAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX
-    ... (contenido completo del certificado CA) ...
-    -----END CERTIFICATE-----
-```
-
-**Nota sobre Certificados TLS:**
-- Los certificados deben estar en formato PEM (texto codificado en Base64)
-- Cada certificado debe incluir las líneas `-----BEGIN..-----` y `-----END...-----`
-- El certificado cliente debe ser emitido para el usuario ONTAP que accederá al backend
-- La clave privada debe estar sin cifrar (no protegida por contraseña)
-- El certificado CA debe ser la CA raíz que firmó el certificado del servidor ONTAP
-
-#### Pasos para Crear secret.yaml
-
-```bash
-# 1. Crear el archivo vacío
-touch secret.yaml
-
-# 2. Editar con tu editor preferido
-nano secret.yaml
-
-# 3. Copiar la estructura según el tipo de autenticación que uses
-
-# 4. Reemplazar los valores:
-#    - name: debe coincidir EXACTAMENTE con backend.credentials.name en config.yaml
-#    - namespace: debe coincidir con backend.namespace (default: trident)
-#    - Credenciales: usuario/password O certificados (nunca ambos)
-
-# 5. Verificar sintaxis YAML
-python -c "import yaml; yaml.safe_load(open('secret.yaml'))"
-
-# 6. IMPORTANTE: NO commitear a Git
-# Verificar que secret.yaml está en .gitignore
-cat .gitignore | grep secret.yaml
+backend:
+  credentials:
+    name: trident-creds
+    clientCertificate: |
+      -----BEGIN CERTIFICATE-----
+      ...
+      -----END CERTIFICATE-----
+    clientPrivateKey: |
+      -----BEGIN PRIVATE KEY-----
+      ...
+      -----END PRIVATE KEY-----
 ```
 
 ---
 
-### 3. Validación Final
+## Parametrización Detallada
 
-Antes de ejecutar el generador, valida que ambos archivos están correctamente creados:
+### Configuración del Backend
+
+#### Campos Obligatorios
+
+| Campo | Tipo | Descripción | Ejemplo |
+|-------|------|-------------|---------|
+| `managementLIF` | string | IP de gestión del SVM | `192.168.0.135` |
+| `svm` | string | Storage Virtual Machine | `nassvm` |
+| `credentials.username` | string | Usuario ONTAP (si no usas certs) | `vsadmin` |
+| `credentials.password` | string | Contraseña (si no usas certs) | `Netapp1!` |
+
+#### Campos Opcionales Comunes
+
+| Campo | Tipo | Default | Descripción |
+|-------|------|---------|-------------|
+| `backendName` | string | auto | Nombre del backend (auto-genera desde managementLIF) |
+| `storagePrefix` | string | `trident` | Prefijo de volúmenes ONTAP |
+| `storageDriverName` | string | `ontap-nas` | Driver: `ontap-nas`, `ontap-nas-economy`, `ontap-nas-flexgroup` |
+| `nasType` | string | `nfs` | Protocolo: `nfs` o `smb` |
+| `useREST` | bool | `true` | Usar REST API (ONTAP 9.11.1+) en lugar de ZAPI |
+| `autoExportPolicy` | bool | `false` | Auto-crear export policies para volúmenes |
+| `autoExportCIDRs` | list | `['0.0.0.0/0']` | CIDRs permitidos en export policy |
+| `limitVolumeSize` | string | `""` | Tamaño máximo de volumen (ej: `10Ti`) |
+| `limitAggregateUsage` | string | `""` | Límite de uso de agregado (ej: `80%`) |
+| `qtreesPerFlexvol` | string | `200` | Qtrees por FlexVol (ontap-nas-economy) |
+| `nfsMountOptions` | string | `""` | Opciones de montaje NFS |
+| `labels` | dict | `{}` | Labels para selección en StorageClass |
+
+#### Configuración de Labels
+
+Los labels se usan para filtrar backends en StorageClass:
+
+```yaml
+backend:
+  labels:
+    environment: production
+    tier: gold
+    location: us-east1
+    backend: ontap-nas
+```
+
+Uso en StorageClass:
+```yaml
+storageClass:
+  parameters:
+    selector: "environment=production; tier=gold"
+```
+
+#### Defaults de Volúmenes
+
+Valores aplicados a todos los PVs creados con este backend:
+
+```yaml
+backend:
+  defaults:
+    # Gestión de espacio
+    spaceReserve: none              # none | volume | file
+    spaceAllocation: "false"        # Thin provisioning
+    
+    # Snapshots
+    snapshotPolicy: none            # none | default | daily | weekly
+    snapshotReserve: none           # none | 5% | 10%
+    snapshotDir: "true"             # Visibilidad de .snapshot
+    
+    # Seguridad y permisos
+    unixPermissions: "755"          # Permisos Unix del volumen
+    exportPolicy: default           # Export policy NFS de ONTAP
+    securityStyle: unix             # unix | ntfs | mixed
+    encryption: "false"             # NetApp Volume Encryption (NVE)
+    
+    # Performance (QoS)
+    qosPolicy: ""                   # Traditional QoS (ej: extreme)
+    adaptiveQosPolicy: ""           # Adaptive QoS (ej: extreme-performance)
+    
+    # Ubicación
+    aggregate: ""                   # Agregado específico (ej: aggr1)
+    tieringPolicy: none             # none | snapshot-only | auto | all
+    
+    # Plantilla de nombres
+    nameTemplate: ""                # Ej: "{{.volume.Namespace}}_{{.volume.Name}}"
+```
+
+#### Debug Flags
+
+Para troubleshooting avanzado:
+
+```yaml
+backend:
+  debugTraceFlags:
+    api: false      # Traza llamadas API ONTAP
+    method: false   # Traza métodos internos de Trident
+```
+
+**⚠️ Advertencia:** Solo habilitar en troubleshooting, genera logs masivos.
+
+ción
+  name: rhoso-nas                   # Nombre visible en K8s
+  
+  # Comportamiento
+  isDefault: true                   # StorageClass por defecto del cluster
+  reclaimPolicy: Delete             # Delete | Retain (al borrar PVC)
+  allowVolumeExpansion: true        # Permitir resize de PVs
+  volumeBindingMode: Immediate      # Immediate | WaitForFirstConsumer
+  
+  # Para GitOps/ArgoCD
+  syncWave: "5"                     # Orden de sincronización
+  
+  # Filtros de selección de backend
+  parameters:
+    backendType: ontap-nas          # Driver requerido
+    media: ssd                      # ssd | hdd | hybrid
+    provisioningType: thin          # thin | thick
+    snapshots: "true"               # Soporte de snapshots
+```
+
+---
+
+## Ejemplo Completo de Uso
+
+### Escenario: Configurar Backend NAS para Cluster Kubernetes
+
+**Paso 1: Editar config.yaml**
+
+```yaml
+backend:
+  managementLIF: 192.168.0.135
+  dataLIF: nassvm.demo.netapp.com
+  svm: nassvm
+  
+  credentials:
+    name: trident-creds
+    username: vsadmin
+    password: Netapp1!
+
+storageClass:
+  name: rhoso-nas
+  isDefault: true
+```
+
+**Paso 2: Generar archivos**
 
 ```bash
-# Verificar que los archivos existen
-ls -l config.yaml secret.yaml
+python generate_trident_nas.py
+```
 
-# Validar sintaxis YAML de config.yaml
-python -c "import yaml; print('config.yaml OK'); yaml.safe_load(open('config.yaml'))"
+**Salida esperada:**
+```
+Usando configuración: config.yaml
+✓ Archivo generado: backend_storage_nas.yaml
+✓ Archivo generado: secret.yaml
 
-# Validar sintaxis YAML de secret.yaml
-python -c "import yaml; print('secret.yaml OK'); yaml.safe_load(open('secret.yaml'))"
+ ------------------------------------------------------------------
 
-# Verificar que el nombre del Secret coincide en ambos archivos
-grep "credentials:" config.yaml
+ Instrucciones:
+  1. Edita config.yaml con tus valores (managementLIF, svm, credenciales)
+  2. Ejecuta: python generate_trident_nas.py  
+  3. Aplica los archivos generados:
+     - kubectl apply -f secret.yaml -n trident
+     - kubectl apply -f backend_storage_nas.yaml -n trident
+  4. Verifica los recursos creados:
+     - kubectl get secret trident-creds -n trident
+     - kubectl get tridentbackendconfig -n trident
+     - kubectl get storageclass
+
+ ------------------------------------------------------------------
+```
+
+**Paso 3: Aplicar en Kubernetes**
+
+```bash
+# Aplicar secret con credenciales
+kubectl apply -f secret.yaml -n trident
+
+# Aplicar backend y storageclass
+kubectl apply -f backend_storage_nas.yaml -n trident
+
+# Verificar recursos creados
+kubectl get tbc -n trident
+kubectl get sc
+```
+
+---
+
+## Mejores Prácticas de Seguridad
+
+### Gestión de Credenciales
+
+**✅ HACER:**
+- Definir credenciales en `config.yaml` (centralizado)
+- Usar certificados TLS en producción
+- Rotar contraseñas periódicamente
+- Agregar `config.yaml` y `secret.yaml` a `.gitignore`
+- Usar herramientas de gestión de secrets (HashiCorp Vault, Sealed Secrets)
+- Restringir permisos de archivos: `chmod 600 config.yaml`
+
+**❌ NO HACER:**
+- Commitear `config.yaml` con credenciales a Git
+- Compartir credenciales en texto plano
+- Usar contraseñas débiles
+- Dejar `secret.yaml` generado en repositorios públicos
+- Usar mismo usuario para múltiples entornos
+
+### Ejemplo con Sealed Secrets
+
+```bash
+# Generar secret.yaml
+python generate_trident_nas.py
+
+# Encriptar con kubeseal
+kubeseal --format yaml < secret.yaml > sealed-secret.yaml
+
+# Commitear sealed-secret.yaml (seguro)
+git add sealed-secret.yaml
+git commit -m "Add encrypted trident credentials"
+```
+
+### Rotación de Credenciales
+
+```bash
+# 1. Actualizar credenciales en config.yaml
+nano config.yaml  # Cambiar password
+
+# 2. Regenerar secret.yaml
+python generate_trident_nas.py
+
+# 3. Aplicar nuevo secret
+kubectl apply -f secret.yaml -n trident
+
+# 4. Reiniciar Trident controller
+kubectl rollout restart deployment/trident-controller -n trident
+```
+
+---
+
+## Consideraciones de Seguridad
+
+### NetworkPolicies
+
+Restringir acceso a pods de Trident:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: trident-egress
+  namespace: trident
+spec:
+  podSelector:
+    matchLabels:
+      app: trident
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+      - ipBlock:
+          cidr: 192.168.0.0/24  # Red del SVM
+      ports:
+      - protocol: TCP
+        port: 443  # Management LIF
+```
+
+### RBAC
+
+Limitar acceso a secrets de Trident:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: trident-secret-reader
+  namespace: trident
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames: ["trident-creds"]
+  verbs: ["get", "list"]
+```
+
+### Audit Logging
+
+Habilitar audit logs en ONTAP:
+
+```bash
+# En ONTAP CLI
+vserver audit create -vserver nassvm \
+  -destination /audit_logs \
+  -events file-ops,cifs-logon-logoff,cap-staging \
+  -format xml
+  
+vserver audit enable -vserver nassvm
+```
+
+---
+
+## Mejores Prácticas
+
+### Naming Conventions
+
+```yaml
+# Backend
+backend:
+  name: backend-<environment>-<location>-nas
+  # Ejemplo: backend-prod-us-east-nas
+
+# StorageClass
+storageClass:
+  name: <tier>-<protocol>-<performance>
+  # Ejemplo: gold-nas-ssd
+
+# Labels
+backend:
+  labels:
+    environment: prod
+    location: us-east1
+    tier: gold
+    protocol: nfs
+```
+
+### Múltiples Entornos
+
+Estructura recomendada:
+
+```
+trident_configs/
+├── generate_trident_nas.py
+├── environments/
+│   ├── dev/
+│   │   ├── config.yaml
+│   │   └── .gitignore
+│   ├── test/
+│   │   ├── config.yaml
+│   │   └── .gitignore
+│   └── prod/
+│       ├── config.yaml
+│       └── .gitignore
+```
+
+Generar por entorno:
+
+```bash
+# Para development
+cd environments/dev
+python ../../generate_trident_nas.py
+
+# Para production
+cd environments/prod
+python ../../generate_trident_nas.py
+```
+
+### CI/CD Integration
+
+**GitLab CI ejemplo:**
+
+```yaml
+.generate_trident:
+  image: python:3.9
+  before_script:
+    - pip install PyYAML
+  script:
+    - python generate_trident_nas.py
+    - kubectl apply -f secret.yaml -n trident
+    - kubectl apply -f backend_storage_nas.yaml -n trident
+
+deploy_dev:
+  extends: .generate_trident
+  only:
+    - develop
+  environment:
+    name: development
+
+deploy_prod:
+  extends: .generate_trident
+  only:
+    - main
+  environment:
+    name: production
+  when: manual
+```
+
+### Monitoring
+
+```bash
+# Verificar salud del backend
+kubectl get tbc -n trident -w
+
+# Métricas de Trident
+kubectl port-forward -n trident svc/trident-metrics 8443:8443
+curl -k https://localhost:8443/metrics
+
+# Eventos de Kubernetes
+kubectl get events -n trident --sort-by='.lastTimestamp'
+```
+
+---
+
+## Troubleshooting
+
+### Problemas Comunes
+
+#### 1. Backend en estado "Failed"
+
+```bash
+# Diagnóstico
+kubectl describe tbc <backend-name> -n trident
+kubectl logs -n trident deployment/trident-controller --tail=100
+
+# Solución: Verificar credenciales
+kubectl get secret trident-creds -n trident -o jsonpath='{.data.username}' | base64 -d
+```
+
+#### 2. PVC en estado "Pending"
+
+```bash
+# Diagnóstico
+kubectl describe pvc <pvc-name>
+
+# Verificar StorageClass
+kubectl get sc
+kubectl describe sc rhoso-nas
+
+# Verificar eventos
+kubectl get events --field-selector involvedObject.name=<pvc-name>
+```
+
+#### 3. Export Policy Errors
+
+```bash
+# En ONTAP, verificar y agregar regla
+ssh admin@ontap
+vserver export-policy rule create \
+  -vserver nassvm \
+  -policyname default \
+  -clientmatch 192.168.0.0/24 \
+  -rorule sys \
+  -rwrule sys \
+  -superuser sys
+```
+
+---
+
+## Referencias
+
+### Documentación Oficial
+
+- [NetApp Trident Documentation](https://docs.netapp.com/us-en/trident/)
+- [ONTAP NAS Configuration Guide](https://docs.netapp.com/ontap-9/index.jsp)
+- [Kubernetes Storage Classes](https://kubernetes.io/docs/concepts/storage/storage-classes/)
+- [Kubernetes Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
+
+### NetApp Labs
+
+- **Astra Trident Advanced Features v6.0**
+  - Lab Environment: cluster1 (ONTAP 9.14.1)
+  - SVM: nassvm
+  - IPs: Basadas en `demo.netapp.com`
+
+### Recursos Adicionales
+
+- [Trident GitHub Repository](https://github.com/NetApp/trident)
+- [NetApp Community Forums](https://community.netapp.com/)
+- [NetApp Pub (Slack)](https://netapppub.slack.com/)
+
+---
+
+## Changelog
+
+### Versión 2.0 (Optimizada) - Marzo 2026
+
+**Cambios Mayores:**
+- ✨ Arquitectura basada en dataclasses con tipado fuerte
+- ✨ Auto-generación de `secret.yaml` desde `config.yaml`
+- ✨ Configuración unificada (credentials en config.yaml)
+- ✨ Fusión inteligente recursiva de configuraciones
+- ✨ Compatibilidad con formato legacy (credentials anidado)
+- ✨ Auto-generación de backendName desde managementLIF
+
+**Mejoras:**
+- 🔧 Validación automática de tipos con Python type hints
+- 🔧 Comentado inteligente de campos vacíos
+- 🔧 Manejo mejorado de errores y mensajes descriptivos
+- 🔧 Documentación actualizada y completa
+
+**Deprecado:**
+- ❌ Creación manual de `secret.yaml` (ahora auto-generado)
+
+### Versión 1.x - 2025
+
+- Versión inicial con configuración separada
+- Credenciales en `secret.yaml` manual
+
+---
+
+## Contribuciones
+
+Para reportar issues o sugerencias:
+
+1. Contactar al equipo de Professional Services NetApp
+2. Usar el sistema de tickets interno
+3. Documentar el caso de uso y configuración utilizada
+
+---
+
+## Licencia
+
+© 2026 NetApp Professional Services. Todos los derechos reservados.
+
+Este software es propiedad de NetApp Inc. y se proporciona "tal cual" sin garantías de ningún tipo.
 grep "name:" secret.yaml
 ```
 
